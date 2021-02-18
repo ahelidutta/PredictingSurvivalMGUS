@@ -1,0 +1,32 @@
+---
+title: "Extreme gradient boosted classification and regression trees to predict outcomes in patients with monoclonal gammapathies of undermind significance"
+author: "Aheli Dutta, Jordan Gauthier"
+Date: "February 2020"
+---
+
+```{r setup}
+library(dplyr)
+library("survival")
+library("survminer")
+install.packages("gtsummary")
+library("gtsummary")
+```
+
+## GitHub Documents
+
+This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
+```{r data exploration}
+#Training data
+train <- survival::mgus2
+train2 <- train %>% select(age, sex, hgb, creat, mspike, ptime, pstat, futime, death)
+train2 %>% 
+  tbl_summary(by = death, label = list(age ~ "Age", hgb ~ "Hemoglobin", creat ~ "Creatinine",
+                                       ptime ~ "Time Until PCM", pstat ~ "Occurence of PCM", 
+                                       futime ~ "Time Till death", mspike ~ "Size of monoclonal serum splike")) %>% 
+  add_p() %>% 
+  add_overall() %>%
+  add_n() %>%
+  bold_p()%>%
+  modify_header(label ~ "**Variable**")%>%
+  modify_spanning_header(c("stat_1", "stat_2")~"**Survival**")
+```

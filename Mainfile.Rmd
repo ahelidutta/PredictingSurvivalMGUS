@@ -50,7 +50,7 @@ xgb_spec <- boost_tree(
   tree_depth = tune(), min_n = tune(), loss_reduction = tune(),
   sample_size = tune(), mtry = tune(), learn_rate = tune()
 ) %>%
-  set_engine("xgboost") %>%
+  set_engine("xgboost",scale_pos_weight = 1000000) %>%
   set_mode('regression')
 
 xgb_spec
@@ -134,6 +134,7 @@ collect_metrics(final_res)
 
 final_res %>%
   collect_predictions() %>%
+  mutate(pstat = as.factor(pstat))      %>%
   roc_curve(pstat, .pred) %>%
   ggplot(aes(x = 1 - specificity, y = sensitivity)) +
   geom_line(size = 1.5, color = "midnightblue") +

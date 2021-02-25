@@ -169,8 +169,35 @@ final_res %>%
 ```
 
 
+```{r}
+library(caret)
+set.seed(123)
+mgus_lg_df <- complete(mice(mgus2, m=1, maxit = 50, method = 'pmm', seed = 500),1)
+mgus_lg_split <- mgus_lg_df %>% 
+  select(-futime,-death,-id,-ptime) %>% 
+  initial_split(., strata = pstat)
+lg.train <- training(mgus_split)
+lg.test <- testing(mgus_split)
 
+```
 
+```{r}
+model_glm = glm(pstat ~., data = lg.train, family = "binomial")
+summary(model_glm)
+coef(model_glm)
+```
 
+```{r}
+library(pROC)
+model <- glm(pstat~., age + dxyr + hgb+ mspike, data = lg.train, family = "binomial")
+prob <- model %>% predict(lg.train, type = "response")
+head(prob)
 
+predicted.outcomes <- ifelse(prob > 0.5, 1, 0)
+head(predicted.outcomes)
+
+mean(predicted.outcomes == lg.test$pstat)
+
+roc(lg.train$pstat, predicted.outcomes, plot=TRUE)
+```
 

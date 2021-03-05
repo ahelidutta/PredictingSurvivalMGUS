@@ -5,6 +5,10 @@ b <- survival::mgus
 b
 a <- survival::mgus2
 a
+
+class(a$label)
+
+
 a$death
 res.cox <- coxph(Surv(age, death) ~ sex, data = a)
 res.cox

@@ -5,6 +5,7 @@ library("survminer")
 
 #Data
 train <- survival::mgus2
+train$age
 covariates <- c("age", "sex", "hgb", "creat", "mspike", "ptime", "pstat")
 
 #Data censoring
@@ -155,3 +156,5 @@ ggsurv$plot +theme_bw() +
   theme (legend.position = "right")+
   facet_grid(age ~ hgb)
 
+a$pstat
+mgus

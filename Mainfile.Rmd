@@ -18,29 +18,40 @@ library(mice)
 ```
 
 ```{r data exploration}
-#Training data
-train <- survival::mgus2
-train2 <- train %>% select(age, sex, hgb, creat, mspike, ptime, pstat, futime, death)
-train2 %>% 
-  tbl_summary(by = death, label = list(age ~ "Age", hgb ~ "Hemoglobin", creat ~ "Creatinine",
-                                       ptime ~ "Time Until PCM", pstat ~ "Occurence of PCM", 
-                                       futime ~ "Time Till death", mspike ~ "Size of monoclonal serum splike")) %>% 
-  add_p() %>% 
-  add_overall() %>%
-  add_n() %>%
-  bold_p()%>%
-  modify_header(label ~ "**Variable**")%>%
-  modify_spanning_header(c("stat_1", "stat_2")~"**Survival**")
+df_mgus <- survival::mgus2 %>% 
+  select(age,dxyr,hgb,creat,mspike,pstat)
+
+#distribution of data
+par(mfrow = c(2,3))
+for( i in 1:5){
+  hist(df_mgus[,i], main = colnames(df_mgus)[i],xlab = colnames(df_mgus)[i], col = 'light blue')
+}
+
+#box plots
+par(mfrow = c(2,3))
+boxplot(mspike~pstat, ylab = "Monoclonal Serum Splike", xLab = "Progression to PCM", col = "light green", data = df_mgus)
+boxplot(hgb~pstat, ylab = "Hemoglobin", xLab = "Progression to PCM", col = "light green", data = df_mgus)
+boxplot(creat~pstat, ylab = "Creatinine", xLab = "Progression to PCM", col = "light green", data = df_mgus)
+boxplot(age~pstat, ylab = "Age", xLab = "Progression to PCM", col = "light green", data = df_mgus)
+boxplot(dxyr~pstat, ylab = "Year Diagnosed", xLab = "Progression to PCM", col = "light green", data = df_mgus)
+
+```
+
+```{r}
+
 ```
 
 
 ```{r}
 set.seed(123)
 mgus_df <- complete(mice(mgus2, m=1, maxit = 50, method = 'pmm', seed = 500),1)
+#mgusNew_df <- read.csv("mgus_custom_data.csv")
+
 mgus_split <- mgus_df %>% 
   select(-futime,-death,-id,-ptime) %>% 
   initial_split(., strata = pstat)
-mgus_train <- training(mgus_split)
+mgus_train <- read.csv("mgus_custom_data_train.csv") %>% 
+  select(-X,-Unnamed..0)
 mgus_test <- testing(mgus_split)
 ```
 
@@ -50,7 +61,7 @@ xgb_spec <- boost_tree(
   tree_depth = tune(), min_n = tune(), loss_reduction = tune(),
   sample_size = tune(), mtry = tune(), learn_rate = tune()
 ) %>%
-  set_engine("xgboost",scale_pos_weight = 1000000) %>%
+  set_engine("xgboost", objective = 'binary:logistic') %>%
   set_mode('regression')
 
 xgb_spec
@@ -131,7 +142,6 @@ final_xgb %>%
 final_res <- last_fit(final_xgb, mgus_split)
 
 collect_metrics(final_res)
-
 final_res %>%
   collect_predictions() %>%
   mutate(pstat = as.factor(pstat))      %>%
@@ -171,33 +181,62 @@ final_res %>%
 
 ```{r}
 library(caret)
+library(tidymodels)
+library(dplyr)
 set.seed(123)
-mgus_lg_df <- complete(mice(mgus2, m=1, maxit = 50, method = 'pmm', seed = 500),1)
-mgus_lg_split <- mgus_lg_df %>% 
-  select(-futime,-death,-id,-ptime) %>% 
+mgus_lg_df <- complete(mice(mgus2, m=1, maxit = 50, method = 'pmm', seed = 500),1) 
+mgus_lg_df <- subset(mgus_lg_df, select = -c(death, futime, ptime, id)) %>% 
   initial_split(., strata = pstat)
-lg.train <- training(mgus_split)
-lg.test <- testing(mgus_split)
+mgus_lg_df
+lg.train <- training(mgus_lg_df)
+lg.test <- testing(mgus_lg_df)
+
+#lg.train$age_bucket <- as.factor(ifelse(lg.train$age<=40,1,
+                                      #  ifelse(lg.train$age<=60,2,
+                                          #     ifelse(lg.train$age<=80,3,4))))
+
+#lg.test$age_bucket <- as.factor(ifelse(lg.test$age<=40,1,
+                                        #ifelse(lg.test$age<=60,2,
+                                         #      ifelse(lg.test$age<=80,3,4))))
 
 ```
 
 ```{r}
-model_glm = glm(pstat ~., data = lg.train, family = "binomial")
-summary(model_glm)
-coef(model_glm)
+#library(MASS)
+#model_glm = glm(pstat ~., data = lg.train, family = "binomial")
+#summary(model_glm)
+#model_2 <- stepAIC(model_glm)
+#summary(model_2)
+#summary(model_2$fitted.values)
+#hist(model_2$fitted.values,main = " Histogram ",xlab = "Probability of '1' pstat", col = 'light green')
 ```
 
 ```{r}
 library(pROC)
-model <- glm(pstat~., age + dxyr + hgb+ mspike, data = lg.train, family = "binomial")
-prob <- model %>% predict(lg.train, type = "response")
-head(prob)
+library(runway)
+model <- glm(pstat~ age + hgb+ mspike, data = lg.train, family = "binomial",control = list(maxit = 100 ))
+prob <- predict(model, lg.test, type = "response")
 
 predicted.outcomes <- ifelse(prob > 0.5, 1, 0)
-head(predicted.outcomes)
+print(predicted.outcomes)
 
-mean(predicted.outcomes == lg.test$pstat)
+lg.test$prediction = predicted.outcomes
+lg.test %>% roc_plot(
+         outcome = 'pstat',
+         prediction = 'prediction',
+         ci = TRUE, 
+         plot_title= 'Single ROC curve w/CI ribbon')
 
-roc(lg.train$pstat, predicted.outcomes, plot=TRUE)
+lg.test %>%
+  threshperf_plot(
+                outcome = 'pstat',
+                prediction = 'prediction')
+
+lg.test %>%
+  cal_plot(
+         outcome = 'pstat', 
+         prediction = 'prediction',
+         show_loess = TRUE)
+
 ```
 

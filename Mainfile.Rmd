@@ -15,7 +15,7 @@ library(tidyr)
 library(xgboost)
 library(tidymodels)
 library(mice)
-library(haven)
+#library(haven)
 
 ```
 
@@ -53,10 +53,10 @@ mgus_df <- complete(mice(mgus2, m=1, maxit = 50, method = 'pmm', seed = 500),1)
 #mgusNew_df <- read.csv("mgus_custom_data.csv")
 
 mgus_split <- mgus_df %>% 
-  select(-futime,-death,-id,-ptime) %>% 
+  dplyr::select(-futime,-death,-id,-ptime) %>% 
   initial_split(., strata = pstat)
 mgus_train <- read.csv("mgus_custom_data_train.csv") %>% 
-  select(-X,-Unnamed..0)
+  dplyr::select(-X,-Unnamed..0)
 mgus_test <- testing(mgus_split)
 ```
 
@@ -78,7 +78,7 @@ xgb_grid <- grid_latin_hypercube(
   min_n(),
   loss_reduction(),
   sample_size = sample_prop(),
-  finalize(mtry(), train),
+  finalize(mtry(), mgus_train),
   learn_rate(),
   size = 30
 )
@@ -113,8 +113,8 @@ xgb_res <- tune_grid(
 ```{r}
 xgb_res %>%
   collect_metrics() %>%
-  filter(.metric == "rmse") %>%
-  select(mean, mtry:sample_size) %>%
+  dplyr::filter(.metric == "rmse") %>%
+  dplyr::select(mean, mtry:sample_size) %>%
   pivot_longer(mtry:sample_size,
                values_to = "value",
                names_to = "parameter"

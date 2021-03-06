@@ -2,6 +2,7 @@
 title: "Extreme gradient boosted classification and regression trees to predict outcomes in patients with monoclonal gammapathies of undermind significance"
 author: "Aheli Dutta, Jordan Gauthier"
 Date: "February 2020"
+output: rmarkdown::github_document
 ---
 
 ```{r setup}

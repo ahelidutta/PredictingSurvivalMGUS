@@ -206,13 +206,17 @@ lg.test <- mgus_test_lg
 ```{r}
 library(pROC)
 library(runway)
-model <- glm(pstat~ age + hgb+ mspike + dxyr, data = lg.train, family = "binomial",control = list(maxit = 100 ))
+model <- glm(pstat~ sex+ age + hgb+ mspike + dxyr + creat, data = lg.train, family = "binomial",control = list(maxit = 100 ))
 prob <- predict(model, lg.test, type = "response")
 
-predicted.outcomes <- ifelse(prob > 0.5, 1, 0)
+predicted.outcomes <- prob
 print(predicted.outcomes)
 
+    
 lg.test$prediction = predicted.outcomes
+
+
+    
 lg.test %>% roc_plot(
          outcome = 'pstat',
          prediction = 'prediction',

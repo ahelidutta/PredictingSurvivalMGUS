@@ -13,7 +13,7 @@ alive_list = list(alive.T.to_dict().values())
 
 new_df = []
 
-for i in range(3000):
+for i in range(10000):
 	# pick random number   
 	p = random.randint(0,100)
 	if(p % 2):
